@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 /// Chat server sends this messages to session
-#[derive(Serialize, Deserialize, Message)]
+#[derive(Debug, Serialize, Deserialize, Message)]
 pub struct ChatMessage {
     pub content: String,
     pub message_count: usize,

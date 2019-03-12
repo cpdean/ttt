@@ -5,7 +5,6 @@ extern crate env_logger;
 extern crate futures;
 extern crate rand;
 extern crate serde;
-extern crate serde_json;
 extern crate tokio_core;
 extern crate tokio_io;
 
@@ -105,12 +104,16 @@ impl Handler<server::ChatMessage> for WsChatSession {
     type Result = ();
 
     fn handle(&mut self, msg: server::ChatMessage, ctx: &mut Self::Context) {
-        let f = format!(
-            "{{ \"message_count\": {}, \"content\": \"{}\" }}",
-            msg.message_count, msg.content
-        );
-        println!("doing a message {}", f);
-        ctx.text(f);
+        let f = serde_json::to_string(&msg);
+        match f {
+            Ok(json_string) => {
+                println!("doing a message {}", &json_string);
+                ctx.text(json_string);
+            }
+            Err(e) => {
+                println!("error of {} trying to deal with {:?}", e, &msg);
+            }
+        }
     }
 }
 
