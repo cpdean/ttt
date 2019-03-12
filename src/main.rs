@@ -101,10 +101,10 @@ impl Actor for WsChatSession {
 }
 
 /// Handle messages from chat server, we simply send it to peer websocket
-impl Handler<server::Message> for WsChatSession {
+impl Handler<server::ChatMessage> for WsChatSession {
     type Result = ();
 
-    fn handle(&mut self, msg: server::Message, ctx: &mut Self::Context) {
+    fn handle(&mut self, msg: server::ChatMessage, ctx: &mut Self::Context) {
         ctx.text(msg.0);
     }
 }

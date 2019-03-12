@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 
 /// Chat server sends this messages to session
 #[derive(Message)]
-pub struct Message(pub String);
+pub struct ChatMessage(pub String);
 
 /// Message for chat server communications
 
@@ -16,7 +16,7 @@ pub struct Message(pub String);
 #[derive(Message)]
 #[rtype(usize)]
 pub struct Connect {
-    pub addr: Recipient<Message>,
+    pub addr: Recipient<ChatMessage>,
 }
 
 /// Session is disconnected
@@ -55,16 +55,32 @@ pub struct Join {
 /// `ChatServer` manages chat rooms and responsible for coordinating chat
 /// session. implementation is super primitive
 pub struct ChatServer {
-    sessions: HashMap<usize, Recipient<Message>>,
-    rooms: HashMap<String, HashSet<usize>>,
+    sessions: HashMap<usize, Recipient<ChatMessage>>,
+    rooms: HashMap<String, ChatRoom>,
     rng: ThreadRng,
 }
+
+
+struct ChatRoom {
+    sessions_subscribed_to_room: HashSet<usize>,
+    message_count: usize,
+}
+
+impl ChatRoom {
+    pub fn new() -> Self {
+        ChatRoom {
+            sessions_subscribed_to_room: HashSet::new(),
+            message_count: 0
+        }
+    }
+}
+
 
 impl Default for ChatServer {
     fn default() -> ChatServer {
         // default room
         let mut rooms = HashMap::new();
-        rooms.insert("Main".to_owned(), HashSet::new());
+        rooms.insert("Main".to_owned(), ChatRoom::new());
 
         ChatServer {
             sessions: HashMap::new(),
@@ -76,12 +92,14 @@ impl Default for ChatServer {
 
 impl ChatServer {
     /// Send message to all users in the room
-    fn send_message(&self, room: &str, message: &str, skip_id: usize) {
-        if let Some(sessions) = self.rooms.get(room) {
-            for id in sessions {
+    fn send_message(&mut self, room_name: &str, message: &str, skip_id: usize) {
+        if let Some(room) = self.rooms.get_mut(room_name) {
+            for id in &room.sessions_subscribed_to_room {
                 if *id != skip_id {
-                    if let Some(addr) = self.sessions.get(id) {
-                        let _ = addr.do_send(Message(message.to_owned()));
+                    if let Some(addr) = self.sessions.get(&id) {
+                        room.message_count += 1;
+                        let m = format!("messages {}: {}", room.message_count, message);
+                        let _ = addr.do_send(ChatMessage(m));
                     }
                 }
             }
@@ -113,7 +131,7 @@ impl Handler<Connect> for ChatServer {
         self.sessions.insert(id, msg.addr);
 
         // auto join session to Main room
-        self.rooms.get_mut(&"Main".to_owned()).unwrap().insert(id);
+        self.rooms.get_mut(&"Main".to_owned()).unwrap().sessions_subscribed_to_room.insert(id);
 
         // send id back
         id
@@ -132,8 +150,8 @@ impl Handler<Disconnect> for ChatServer {
         // remove address
         if self.sessions.remove(&msg.id).is_some() {
             // remove session from all rooms
-            for (name, sessions) in &mut self.rooms {
-                if sessions.remove(&msg.id) {
+            for (name, room) in &mut self.rooms {
+                if room.sessions_subscribed_to_room.remove(&msg.id) {
                     rooms.push(name.to_owned());
                 }
             }
@@ -150,7 +168,7 @@ impl Handler<ClientMessage> for ChatServer {
     type Result = ();
 
     fn handle(&mut self, msg: ClientMessage, _: &mut Context<Self>) {
-        self.send_message(&msg.room, msg.msg.as_str(), msg.id);
+        self.send_message(&msg.room, &msg.msg.to_owned(), msg.id);
     }
 }
 
@@ -179,8 +197,8 @@ impl Handler<Join> for ChatServer {
         let mut rooms = Vec::new();
 
         // remove session from all rooms
-        for (n, sessions) in &mut self.rooms {
-            if sessions.remove(&id) {
+        for (n, room) in &mut self.rooms {
+            if room.sessions_subscribed_to_room.remove(&id) {
                 rooms.push(n.to_owned());
             }
         }
@@ -190,9 +208,9 @@ impl Handler<Join> for ChatServer {
         }
 
         if self.rooms.get_mut(&name).is_none() {
-            self.rooms.insert(name.clone(), HashSet::new());
+            self.rooms.insert(name.clone(), ChatRoom::new());
         }
         self.send_message(&name, "Someone connected", id);
-        self.rooms.get_mut(&name).unwrap().insert(id);
+        self.rooms.get_mut(&name).unwrap().sessions_subscribed_to_room.insert(id);
     }
 }
