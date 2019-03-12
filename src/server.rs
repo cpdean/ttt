@@ -5,10 +5,14 @@
 use actix::prelude::*;
 use rand::{self, rngs::ThreadRng, Rng};
 use std::collections::{HashMap, HashSet};
+use serde::{Deserialize, Serialize};
 
 /// Chat server sends this messages to session
-#[derive(Message)]
-pub struct ChatMessage(pub String);
+#[derive(Serialize, Deserialize, Message)]
+pub struct ChatMessage {
+    pub content: String,
+    pub message_count: usize,
+}
 
 /// Message for chat server communications
 
@@ -98,8 +102,10 @@ impl ChatServer {
                 if *id != skip_id {
                     if let Some(addr) = self.sessions.get(&id) {
                         room.message_count += 1;
-                        let m = format!("messages {}: {}", room.message_count, message);
-                        let _ = addr.do_send(ChatMessage(m));
+                        let _ = addr.do_send(ChatMessage{
+                            content: message.to_owned(),
+                            message_count: room.message_count
+                        });
                     }
                 }
             }

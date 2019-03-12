@@ -105,7 +105,12 @@ impl Handler<server::ChatMessage> for WsChatSession {
     type Result = ();
 
     fn handle(&mut self, msg: server::ChatMessage, ctx: &mut Self::Context) {
-        ctx.text(msg.0);
+        let f = format!(
+            "{{ \"message_count\": {}, \"content\": \"{}\" }}",
+            msg.message_count, msg.content
+        );
+        println!("doing a message {}", f);
+        ctx.text(f);
     }
 }
 
