@@ -11,3 +11,8 @@
   :is-connected
   (fn [db]
     (:is-connected db)))
+
+(re-frame/reg-sub
+  ::logs
+  (fn [db]
+    (:log-text db)))

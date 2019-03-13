@@ -44,12 +44,32 @@
       )
     ))
 
+
+(defn chat-logs []
+  (let [
+        logs @(re-frame/subscribe [::subs/logs])
+        ]
+    [:div#log
+     [:ul
+      (for [item logs]
+        (let [ct (:message-count item)
+              txt (:content item)]
+        ^{:key (:message-count item)} [:li "messages: " ct " " txt]
+        )
+        )
+      ]
+     ]
+    )
+  )
+
 (defn main-panel []
-  (let [name (re-frame/subscribe [::subs/name])]
+  (let [
+        name (re-frame/subscribe [::subs/name])
+        ]
     [:div
      [:h2 "doing aa chat in " @name]
      [connection-panel]
-     [:div#log ]
+     [chat-logs]
      [:form#chatform {:on-submit #(false)}
       [:input#text {:type "text"} ]
       [:input#send {:type "button" :value "Send"} ]

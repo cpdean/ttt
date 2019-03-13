@@ -27,3 +27,13 @@
   :disconnect
   (fn [db [_]]
        (assoc db :is-connected false)))
+
+(re-frame/reg-event-db
+  :new-ws-message
+  (fn [db [_ event-data]]
+    (let [
+          message-count (.-message-count event-data)
+          content (.-content event-data)
+          old-logs (:log-text db)
+          new-logs (conj old-logs {:message-count message-count :content content})]
+       (assoc db :log-text new-logs))))
