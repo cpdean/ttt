@@ -1,0 +1,14 @@
+body {
+//background: green;
+}
+
+.spacer {
+    padding: 0px 20px;
+}
+
+#log {
+    width: 20em;
+    height: 11em;
+    overflow: auto;
+    border: 1px solid black;
+}
