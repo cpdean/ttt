@@ -6,11 +6,11 @@
 
 (defn disconnect
   []
-  (if (not (.-tttconn js/window))
+  (if (.-tttconn js/window)
     (do
-    (.close (.-tttconn js/window))
-    (set! (.-tttconn js/window) nil)
-    (re-frame/dispatch :disconnect))))
+      (.close (.-tttconn js/window))
+      (set! (.-tttconn js/window) nil)
+      (re-frame/dispatch [:disconnect]))))
 
 (defn connect
   []
@@ -18,10 +18,10 @@
         socket    (js/WebSocket. url)]
       (set! (.-onopen socket) (fn [] (re-frame/dispatch [:connect])))
       (set! (.-onmessage socket) (fn [e] (re-frame/dispatch [:new-ws-message (.parse js/JSON (.-data e))])))
-      (set! (.-onclose socket) (fn [e] (
-                                        (set! (.-tttconn js/window) nil)
-                                        (re-frame/dispatch [:disconnect])
-                                        )))))
+      (set! (.-onclose socket) (fn [e] (re-frame/dispatch [:disconnect])))
+      ; put it on the window obj so you can close it
+      (set! (.-tttconn js/window) socket)
+      ))
 
 
 (defn connection-panel []
