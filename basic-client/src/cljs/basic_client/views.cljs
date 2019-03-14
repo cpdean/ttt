@@ -54,13 +54,8 @@
       (for [item logs]
         (let [ct (:message-count item)
               txt (:content item)]
-        ^{:key (:message-count item)} [:li "messages: " ct " " txt]
-        )
-        )
-      ]
-     ]
-    )
-  )
+        ^{:key (:message-count item)} [:li "messages: " ct " " txt])) ] ]))
+
 
 (defn main-panel []
   (let [
@@ -70,22 +65,28 @@
      [:h2 "doing aa chat in " @name]
      [connection-panel]
      [chat-logs]
-     [:form#chatform {:on-submit #(false)}
-      [:input#text {:type "text"} ]
-      [:input#send {:type "button" :value "Send"} ]
-      ]
-
-
-; <div>
-; </div>
-; <div id="log"
-;      style="width:20em;height:15em;overflow:auto;border:1px solid black">
-; </div>
-; <form id="chatform" onsubmit="return false;">
-;   <input id="text" type="text" />
-;   <input id="send" type="button" value="Send" />
-; </form>
-
+     [:input#text {:type "text"
+                   :on-key-up (defn goaters [e]
+                                (if (= (.-keyCode e) 13)
+                                  (let [socket (.-tttconn js/window)
+                                        text-input (.getElementById js/document "text")
+                                        text (.-value text-input) ]
+                                    (.send socket text)
+                                    (set! (.-value text-input) "")
+                                    false)))
+                   } ]
+     [:input#send {
+                   :type "button"
+                   :value "Send"
+                   :on-click (fn []
+                               (let [socket (.-tttconn js/window)
+                                     text-input (.getElementById js/document "text")
+                                     text (.-value text-input) ]
+                                 (.send socket text)
+                                 (set! (.-value text-input) "")
+                                 false
+                                 ))
+                   } ]
 
 
      ]))
