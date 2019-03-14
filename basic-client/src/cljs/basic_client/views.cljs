@@ -2,6 +2,7 @@
   (:require
    [re-frame.core :as re-frame]
    [basic-client.subs :as subs]
+   [clojure.pprint :refer [pprint]]
    ))
 
 (defn disconnect
@@ -57,36 +58,58 @@
         ^{:key (:message-count item)} [:li "messages: " ct " " txt])) ] ]))
 
 
-(defn main-panel []
+(defn cell [value pos]
   (let [
-        name (re-frame/subscribe [::subs/name])
+        clicker #(do (re-frame/dispatch [:move pos]) false)
+        filler (case value 1 "X" 2 "O" 0 " ")
         ]
+    [:td {:on-click clicker} filler ]
+    )
+  )
+
+(defn game-board []
+  (let [
+        grid @(re-frame/subscribe [::subs/grid])
+        [[c00 c10 c20]
+         [c01 c11 c21]
+         [c02 c12 c22]] grid]
     [:div
-     [:h2 "doing aa chat in " @name]
-     [connection-panel]
-     [chat-logs]
-     [:input#text {:type "text"
-                   :on-key-up (defn goaters [e]
-                                (if (= (.-keyCode e) 13)
-                                  (let [socket (.-tttconn js/window)
-                                        text-input (.getElementById js/document "text")
-                                        text (.-value text-input) ]
-                                    (.send socket text)
-                                    (set! (.-value text-input) "")
-                                    false)))
-                   } ]
-     [:input#send {
-                   :type "button"
-                   :value "Send"
-                   :on-click (fn []
-                               (let [socket (.-tttconn js/window)
-                                     text-input (.getElementById js/document "text")
-                                     text (.-value text-input) ]
-                                 (.send socket text)
-                                 (set! (.-value text-input) "")
-                                 false
-                                 ))
-                   } ]
+     [:pre (with-out-str (pprint grid))] 
+     [:table#gameboard
+      [:tbody
+       [:tr [cell c00 [0 0]] [cell c10 [1 0]] [cell c20 [2 0]]]
+       [:tr [cell c01 [0 1]] [cell c11 [1 1]] [cell c20 [2 1]]]
+       [:tr [cell c01 [0 2]] [cell c12 [1 2]] [cell c22 [2 2]]]
+       ]
+      ]]))
+
+(defn main-panel []
+  [:div
+   [connection-panel]
+   [game-board]
+   [chat-logs]
+   [:input#text {:type "text"
+                 :on-key-up (defn goaters [e]
+                              (if (= (.-keyCode e) 13)
+                                (let [socket (.-tttconn js/window)
+                                      text-input (.getElementById js/document "text")
+                                      text (.-value text-input) ]
+                                  (.send socket text)
+                                  (set! (.-value text-input) "")
+                                  false)))
+                 } ]
+   [:input#send {
+                 :type "button"
+                 :value "Send"
+                 :on-click (fn []
+                             (let [socket (.-tttconn js/window)
+                                   text-input (.getElementById js/document "text")
+                                   text (.-value text-input) ]
+                               (.send socket text)
+                               (set! (.-value text-input) "")
+                               false
+                               ))
+                 } ]
 
 
-     ]))
+   ])

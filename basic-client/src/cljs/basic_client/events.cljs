@@ -37,3 +37,19 @@
           old-logs (:log-text db)
           new-logs (conj old-logs {:message-count message-count :content content})]
        (assoc db :log-text new-logs))))
+
+
+; rotating for now, irl event set later
+(re-frame/reg-event-db
+  :move
+  (fn [db [_ pos]]
+    (let [[x y] pos
+          _ (js/console.log pos)
+          current (((:grid db) x) y)
+          rot-cell (case current
+                     0 1
+                     1 2
+                     2 0)
+          new-row (assoc ((:grid db) x) y rot-cell)
+          new-grid (assoc (:grid db) x new-row)]
+       (assoc db :grid new-grid))))

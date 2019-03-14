@@ -16,3 +16,8 @@
   ::logs
   (fn [db]
     (:log-text db)))
+
+(re-frame/reg-sub
+  ::grid
+  (fn [db]
+    (:grid db)))

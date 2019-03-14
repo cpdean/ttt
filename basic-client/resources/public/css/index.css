@@ -12,3 +12,14 @@ body {
     overflow: auto;
     border: 1px solid black;
 }
+
+#gameboard {
+    padding: 10px;
+    background: green;
+}
+
+#gameboard td {
+    border: 1em solid white;
+    padding: 1em;
+
+}
