@@ -8,7 +8,7 @@ body {
 
 #log {
     width: 20em;
-    height: 11em;
+    height: 14em;
     overflow: auto;
     border: 1px solid black;
 }

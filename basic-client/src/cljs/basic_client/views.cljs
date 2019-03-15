@@ -45,6 +45,10 @@
       )
     ))
 
+(defn last-n [n coll]
+  (let [drop-n (- (count coll) n)]
+    (drop drop-n coll)))
+
 
 (defn chat-logs []
   (let [
@@ -52,7 +56,7 @@
         ]
     [:div#log
      [:ul
-      (for [item logs]
+      (for [item (last-n 5 logs)]
         (let [ct (:message-count item)
               txt (:content item)]
         ^{:key (:message-count item)} [:li "messages: " ct " " txt])) ] ]))
@@ -60,7 +64,10 @@
 
 (defn cell [value pos]
   (let [
-        clicker #(do (re-frame/dispatch [:move pos]) false)
+        clicker (case value
+                  1 #()
+                  2 #()
+                  0 #(do (re-frame/dispatch [:move pos]) false))
         filler (case value 1 "X" 2 "O" 0 " ")
         ]
     [:td {:on-click clicker} filler ]
@@ -74,7 +81,7 @@
          [c01 c11 c21]
          [c02 c12 c22]] grid]
     [:div
-     [:pre (with-out-str (pprint grid))] 
+     #_[:pre (with-out-str (pprint grid))] 
      [:table#gameboard
       [:tbody
        [:tr [cell c00 [0 0]] [cell c10 [1 0]] [cell c20 [2 0]]]
@@ -89,7 +96,7 @@
    [game-board]
    [chat-logs]
    [:input#text {:type "text"
-                 :on-key-up (defn goaters [e]
+                 :on-key-up (fn [e]
                               (if (= (.-keyCode e) 13)
                                 (let [socket (.-tttconn js/window)
                                       text-input (.getElementById js/document "text")

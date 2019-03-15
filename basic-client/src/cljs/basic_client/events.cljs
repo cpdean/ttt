@@ -40,10 +40,12 @@
 
 
 ; rotating for now, irl event set later
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
   :move
-  (fn [db [_ pos]]
-    (let [[x y] pos
+  (fn [cofx [_ pos]]
+    (let [
+          db (:db cofx)
+          [x y] pos
           _ (js/console.log pos)
           current (((:grid db) y) x)
           rot-cell (case current
@@ -52,4 +54,14 @@
                      2 0)
           new-row (assoc ((:grid db) y) x rot-cell)
           new-grid (assoc (:grid db) y new-row)]
-       (assoc db :grid new-grid))))
+       {:db (assoc db :grid new-grid)
+        :send-move [pos rot-cell]
+        })))
+
+(re-frame/reg-fx
+  :send-move
+  (fn [[[x y] cell-value]]
+    (let [socket (.-tttconn js/window) ]
+      (.send socket (js/JSON.stringify
+                      #js {:pos #js [x y] :cell-value cell-value}))
+      )))
