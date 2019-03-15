@@ -64,8 +64,8 @@
   (fn [cofx [_ [[x y] cell-value]]]
     (let [
           json js/JSON.stringify
-          move-event (json #js {:pos #js [x y] :cell-value cell-value})
-          event-str (json #js {:event-type "move" :data move-event})
+          move-event (json #js {:pos #js [x y] :cell_value cell-value})
+          event-str (json #js {:event_type "move" :data move-event})
           ]
       {:send-event event-str}
       )))
@@ -75,7 +75,7 @@
   (fn [cofx [_ text-msg]]
     (let [
           json js/JSON.stringify
-          event-str (json #js {:event-type "chatmessage" :data text-msg})
+          event-str (json #js {:event_type "chatmessage" :data text-msg})
           ]
       {:send-event event-str}
       )))

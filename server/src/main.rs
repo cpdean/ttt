@@ -117,7 +117,8 @@ impl Handler<server::ChatMessage> for WsChatSession {
     }
 }
 
-/// WebSocket message handler
+// old chat based handler /// WebSocket message handler
+/*
 impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
         println!("WEBSOCKET MESSAGE: {:?}", msg);
@@ -193,6 +194,55 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                         msg: msg,
                         room: self.room.clone(),
                     })
+                }
+            }
+            ws::Message::Binary(bin) => println!("Unexpected binary"),
+            ws::Message::Close(_) => {
+                ctx.stop();
+            }
+        }
+    }
+}
+*/
+
+impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
+    fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
+        println!("WEBSOCKET MESSAGE: {:?}", msg);
+        match msg {
+            ws::Message::Ping(msg) => {
+                self.hb = Instant::now();
+                ctx.pong(&msg);
+            }
+            ws::Message::Pong(_) => {
+                self.hb = Instant::now();
+            }
+            ws::Message::Text(text) => {
+                let general_message: server::JsonGeneralMessage = serde_json::from_str(&text).unwrap();
+                match general_message.event_type.as_ref() {
+                    "chatmessage" => {
+                        println!("a chat");
+                        ctx.state().addr.do_send(server::ClientMessage {
+                            id: self.id,
+                            msg: general_message.data,
+                            room: self.room.clone(),
+                        });
+                    }
+                    "move" => {
+                        println!("a game move");
+                        ctx.state().addr.do_send(server::ClientMessage {
+                            id: self.id,
+                            msg: general_message.data,
+                            room: self.room.clone(),
+                        });
+                    }
+                    e_type => {
+                        println!("whatt???? {} ", e_type);
+                        ctx.state().addr.do_send(server::ClientMessage {
+                            id: self.id,
+                            msg: general_message.data,
+                            room: self.room.clone(),
+                        });
+                    }
                 }
             }
             ws::Message::Binary(bin) => println!("Unexpected binary"),

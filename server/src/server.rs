@@ -4,8 +4,14 @@
 
 use actix::prelude::*;
 use rand::{self, rngs::ThreadRng, Rng};
-use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+
+#[derive(Debug, Serialize, Deserialize, Message)]
+pub struct JsonGeneralMessage {
+    pub event_type: String,
+    pub data: String,
+}
 
 /// Chat server sends this messages to session
 #[derive(Debug, Serialize, Deserialize, Message)]
@@ -64,7 +70,6 @@ pub struct ChatServer {
     rng: ThreadRng,
 }
 
-
 struct ChatRoom {
     sessions_subscribed_to_room: HashSet<usize>,
     message_count: usize,
@@ -74,11 +79,10 @@ impl ChatRoom {
     pub fn new() -> Self {
         ChatRoom {
             sessions_subscribed_to_room: HashSet::new(),
-            message_count: 0
+            message_count: 0,
         }
     }
 }
-
 
 impl Default for ChatServer {
     fn default() -> ChatServer {
@@ -102,9 +106,9 @@ impl ChatServer {
                 if *id != skip_id {
                     if let Some(addr) = self.sessions.get(&id) {
                         room.message_count += 1;
-                        let _ = addr.do_send(ChatMessage{
+                        let _ = addr.do_send(ChatMessage {
                             content: message.to_owned(),
-                            message_count: room.message_count
+                            message_count: room.message_count,
                         });
                     }
                 }
@@ -137,7 +141,11 @@ impl Handler<Connect> for ChatServer {
         self.sessions.insert(id, msg.addr);
 
         // auto join session to Main room
-        self.rooms.get_mut(&"Main".to_owned()).unwrap().sessions_subscribed_to_room.insert(id);
+        self.rooms
+            .get_mut(&"Main".to_owned())
+            .unwrap()
+            .sessions_subscribed_to_room
+            .insert(id);
 
         // send id back
         id
@@ -217,6 +225,10 @@ impl Handler<Join> for ChatServer {
             self.rooms.insert(name.clone(), ChatRoom::new());
         }
         self.send_message(&name, "Someone connected", id);
-        self.rooms.get_mut(&name).unwrap().sessions_subscribed_to_room.insert(id);
+        self.rooms
+            .get_mut(&name)
+            .unwrap()
+            .sessions_subscribed_to_room
+            .insert(id);
     }
 }
