@@ -69,8 +69,13 @@
                   2 #()
                   0 #(do (re-frame/dispatch [:move pos]) false))
         filler (case value 1 "X" 2 "O" 0 " ")
+        style-class (case value
+                      1 ""
+                      2 ""
+                      0 "open")
+        
         ]
-    [:td {:on-click clicker} filler ]
+    [:td {:on-click clicker :class style-class} filler ]
     )
   )
 
@@ -90,18 +95,25 @@
        ]
       ]]))
 
+(defn player-status []
+  (let [
+        name @(re-frame/subscribe [::subs/player-name])
+        ]
+    [:span name ]))
+
 (defn main-panel []
   [:div
+   [player-status]
    [connection-panel]
    [game-board]
    [chat-logs]
    [:input#text {:type "text"
                  :on-key-up (fn [e]
                               (if (= (.-keyCode e) 13)
-                                (let [socket (.-tttconn js/window)
-                                      text-input (.getElementById js/document "text")
+                                (let [text-input (.getElementById js/document "text")
                                       text (.-value text-input) ]
-                                  (.send socket text)
+
+                                  (re-frame/dispatch [:send-msg text])
                                   (set! (.-value text-input) "")
                                   false)))
                  } ]
@@ -109,10 +121,9 @@
                  :type "button"
                  :value "Send"
                  :on-click (fn []
-                             (let [socket (.-tttconn js/window)
-                                   text-input (.getElementById js/document "text")
+                             (let [text-input (.getElementById js/document "text")
                                    text (.-value text-input) ]
-                               (.send socket text)
+                               (re-frame/dispatch [:send-msg text])
                                (set! (.-value text-input) "")
                                false
                                ))

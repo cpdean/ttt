@@ -2,6 +2,7 @@
   (:require
    [re-frame.core :as re-frame]
    [basic-client.db :as db]
+   [clojure.string :as s]
    ))
 
 (re-frame/reg-event-db
@@ -55,13 +56,32 @@
           new-row (assoc ((:grid db) y) x rot-cell)
           new-grid (assoc (:grid db) y new-row)]
        {:db (assoc db :grid new-grid)
-        :send-move [pos rot-cell]
+        :dispatch [:send-move [pos rot-cell]]
         })))
 
-(re-frame/reg-fx
+(re-frame/reg-event-fx
   :send-move
-  (fn [[[x y] cell-value]]
-    (let [socket (.-tttconn js/window) ]
-      (.send socket (js/JSON.stringify
-                      #js {:pos #js [x y] :cell-value cell-value}))
+  (fn [cofx [_ [[x y] cell-value]]]
+    (let [
+          json js/JSON.stringify
+          move-event (json #js {:pos #js [x y] :cell-value cell-value})
+          event-str (json #js {:event-type "move" :data move-event})
+          ]
+      {:send-event event-str}
       )))
+
+(re-frame/reg-event-fx
+  :send-msg
+  (fn [cofx [_ text-msg]]
+    (let [
+          json js/JSON.stringify
+          event-str (json #js {:event-type "chatmessage" :data text-msg})
+          ]
+      {:send-event event-str}
+      )))
+
+(re-frame/reg-fx
+  :send-event
+  (fn [event-str]
+    (let [ socket (.-tttconn js/window) ]
+      (.send socket event-str ))))
