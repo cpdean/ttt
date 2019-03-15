@@ -45,11 +45,11 @@
   (fn [db [_ pos]]
     (let [[x y] pos
           _ (js/console.log pos)
-          current (((:grid db) x) y)
+          current (((:grid db) y) x)
           rot-cell (case current
                      0 1
                      1 2
                      2 0)
-          new-row (assoc ((:grid db) x) y rot-cell)
-          new-grid (assoc (:grid db) x new-row)]
+          new-row (assoc ((:grid db) y) x rot-cell)
+          new-grid (assoc (:grid db) y new-row)]
        (assoc db :grid new-grid))))

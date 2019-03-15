@@ -78,8 +78,8 @@
      [:table#gameboard
       [:tbody
        [:tr [cell c00 [0 0]] [cell c10 [1 0]] [cell c20 [2 0]]]
-       [:tr [cell c01 [0 1]] [cell c11 [1 1]] [cell c20 [2 1]]]
-       [:tr [cell c01 [0 2]] [cell c12 [1 2]] [cell c22 [2 2]]]
+       [:tr [cell c01 [0 1]] [cell c11 [1 1]] [cell c21 [2 1]]]
+       [:tr [cell c02 [0 2]] [cell c12 [1 2]] [cell c22 [2 2]]]
        ]
       ]]))
 
