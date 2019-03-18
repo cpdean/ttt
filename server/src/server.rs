@@ -13,11 +13,63 @@ pub struct JsonGeneralMessage {
     pub data: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, Message)]
+pub struct TicTacToeGame {
+    pub player1: Option<usize>,
+    pub player2: Option<usize>,
+    pub current_player_turn: Option<usize>,
+    pub grid: Vec<Vec<usize>>,
+    pub winner: Option<usize>,
+}
+
+impl TicTacToeGame {
+    pub fn new() -> Self {
+        TicTacToeGame {
+            player1: None,
+            player2: None,
+            current_player_turn: None,
+            grid: vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]],
+            winner: None,
+        }
+    }
+
+    pub fn add_player(&mut self, id: usize) {
+        // make the joiner a player
+        if self.player1.is_none() {
+            self.player1 = Some(id);
+        } else if self.player2.is_none() {
+            self.player2 = Some(id);
+        }
+    }
+
+    pub fn remove_player(&mut self, id: usize) {
+        if self.player1 == Some(id) {
+            self.player1 = None;
+        } else if self.player2 == Some(id) {
+            self.player2 = None;
+        }
+    }
+}
+
+#[derive(Debug, Message)]
+pub enum GameMessage {
+    Chat(ChatMessage),
+    Turn(GameStateMessage),
+}
+
 /// Chat server sends this messages to session
 #[derive(Debug, Serialize, Deserialize, Message)]
 pub struct ChatMessage {
+    pub event_type: String,
     pub content: String,
     pub message_count: usize,
+}
+
+/// broadcasting game state
+#[derive(Debug, Serialize, Deserialize, Message)]
+pub struct GameStateMessage {
+    pub event_type: String,
+    pub content: TicTacToeGame,
 }
 
 /// Message for chat server communications
@@ -26,7 +78,7 @@ pub struct ChatMessage {
 #[derive(Message)]
 #[rtype(usize)]
 pub struct Connect {
-    pub addr: Recipient<ChatMessage>,
+    pub addr: Recipient<GameMessage>,
 }
 
 /// Session is disconnected
@@ -40,6 +92,8 @@ pub struct Disconnect {
 pub struct ClientMessage {
     /// Id of the client session
     pub id: usize,
+    /// game turn or chat message
+    pub event_type: String,
     /// Peer message
     pub msg: String,
     /// Room name
@@ -65,7 +119,7 @@ pub struct Join {
 /// `ChatServer` manages chat rooms and responsible for coordinating chat
 /// session. implementation is super primitive
 pub struct ChatServer {
-    sessions: HashMap<usize, Recipient<ChatMessage>>,
+    sessions: HashMap<usize, Recipient<GameMessage>>,
     rooms: HashMap<String, ChatRoom>,
     rng: ThreadRng,
 }
@@ -73,6 +127,7 @@ pub struct ChatServer {
 struct ChatRoom {
     sessions_subscribed_to_room: HashSet<usize>,
     message_count: usize,
+    game_state: TicTacToeGame,
 }
 
 impl ChatRoom {
@@ -80,6 +135,7 @@ impl ChatRoom {
         ChatRoom {
             sessions_subscribed_to_room: HashSet::new(),
             message_count: 0,
+            game_state: TicTacToeGame::new(),
         }
     }
 }
@@ -98,18 +154,57 @@ impl Default for ChatServer {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Message)]
+pub struct GameTurnMessage {
+    position: Vec<usize>,
+    player: String,
+}
+
+// TODO: i'm clearly calling it below
+#[allow(dead_code)]
+fn advance_turn(cm: GameTurnMessage, game_state: TicTacToeGame) -> TicTacToeGame {
+    let mut gm = game_state;
+    let x = cm.position[0];
+    let y = cm.position[1];
+    println!("{}", cm.player);
+    let symbol = if cm.player == "player1" { 1 } else { 2 };
+    gm.grid[y][x] = symbol;
+    gm
+}
+
 impl ChatServer {
-    /// Send message to all users in the room
-    fn send_message(&mut self, room_name: &str, message: &str, skip_id: usize) {
+    fn send_turn(&mut self, room_name: &str, message: &str, skip_id: usize) {
+        println!("sending the turn now");
+        if let Some(room) = self.rooms.get_mut(room_name) {
+            let gameturn: GameTurnMessage = serde_json::from_str(&message).unwrap();
+            let next_turn = advance_turn(gameturn, room.game_state.clone());
+            let next_turn_json = serde_json::to_string(&next_turn).unwrap();
+            room.game_state = next_turn.clone();
+            for id in &room.sessions_subscribed_to_room {
+                if *id != skip_id {
+                    if let Some(addr) = self.sessions.get(&id) {
+                        room.message_count += 1;
+                        let _ = addr.do_send(GameMessage::Turn(GameStateMessage {
+                            event_type: "board".to_owned(),
+                            content: next_turn.clone(),
+                        }));
+                    }
+                }
+            }
+        }
+    }
+
+    fn send_chat(&mut self, room_name: &str, message: &str, skip_id: usize) {
         if let Some(room) = self.rooms.get_mut(room_name) {
             for id in &room.sessions_subscribed_to_room {
                 if *id != skip_id {
                     if let Some(addr) = self.sessions.get(&id) {
                         room.message_count += 1;
-                        let _ = addr.do_send(ChatMessage {
+                        let _ = addr.do_send(GameMessage::Chat(ChatMessage {
+                            event_type: "chat".to_owned(),
                             content: message.to_owned(),
                             message_count: room.message_count,
-                        });
+                        }));
                     }
                 }
             }
@@ -134,7 +229,7 @@ impl Handler<Connect> for ChatServer {
         println!("Someone joined");
 
         // notify all users in same room
-        self.send_message(&"Main".to_owned(), "Someone joined", 0);
+        self.send_chat(&"Main".to_owned(), "Someone joined", 0);
 
         // register session with random id
         let id = self.rng.gen::<usize>();
@@ -146,6 +241,11 @@ impl Handler<Connect> for ChatServer {
             .unwrap()
             .sessions_subscribed_to_room
             .insert(id);
+
+        let main_room = self.rooms.get_mut(&"Main".to_owned()).unwrap();
+
+        // make the joiner a player
+        main_room.game_state.add_player(id);
 
         // send id back
         id
@@ -168,11 +268,13 @@ impl Handler<Disconnect> for ChatServer {
                 if room.sessions_subscribed_to_room.remove(&msg.id) {
                     rooms.push(name.to_owned());
                 }
+                // also remove that player.
+                room.game_state.remove_player(msg.id);
             }
         }
         // send message to other users
         for room in rooms {
-            self.send_message(&room, "Someone disconnected", 0);
+            self.send_chat(&room, "Someone disconnected", 0);
         }
     }
 }
@@ -182,7 +284,13 @@ impl Handler<ClientMessage> for ChatServer {
     type Result = ();
 
     fn handle(&mut self, msg: ClientMessage, _: &mut Context<Self>) {
-        self.send_message(&msg.room, &msg.msg.to_owned(), msg.id);
+        match msg.event_type.as_ref() {
+            "chatmessage" => self.send_chat(&msg.room, &msg.msg.to_owned(), msg.id),
+            "move" => self.send_turn(&msg.room, &msg.msg.to_owned(), msg.id),
+            e_type => {
+                println!("some kind of error???? {} ", e_type);
+            }
+        }
     }
 }
 
@@ -218,13 +326,13 @@ impl Handler<Join> for ChatServer {
         }
         // send message to other users
         for room in rooms {
-            self.send_message(&room, "Someone disconnected", 0);
+            self.send_chat(&room, "Someone disconnected", 0);
         }
 
         if self.rooms.get_mut(&name).is_none() {
             self.rooms.insert(name.clone(), ChatRoom::new());
         }
-        self.send_message(&name, "Someone connected", id);
+        self.send_chat(&name, "Someone connected", id);
         self.rooms
             .get_mut(&name)
             .unwrap()

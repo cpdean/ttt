@@ -29,15 +29,39 @@
   (fn [db [_]]
        (assoc db :is-connected false)))
 
-(re-frame/reg-event-db
+(re-frame/reg-event-fx
   :new-ws-message
-  (fn [db [_ event-data]]
+  (fn [cofx [_ event-data]]
+    (let [
+          forwarded-event (case (.-event_type event-data)
+                            "chat" [:new-chat-message event-data]
+                            "board" [:new-game-message event-data])
+          ]
+      {:dispatch forwarded-event})))
+
+(re-frame/reg-event-fx
+  :new-game-message
+  (fn [cofx [_ event-data]]
+    (let [
+          content (.-content event-data)
+          db (:db cofx)
+          ]
+      (js/console.log content)
+      {:db (assoc db :grid (.-grid content))
+      })))
+
+(re-frame/reg-event-fx
+  :new-chat-message
+  (fn [cofx [_ event-data]]
     (let [
           message-count (.-message-count event-data)
           content (.-content event-data)
+          db (:db cofx)
           old-logs (:log-text db)
-          new-logs (conj old-logs {:message-count message-count :content content})]
-       (assoc db :log-text new-logs))))
+          new-logs (conj old-logs {:message-count message-count :content content})
+          ]
+      {:db (assoc db :log-text new-logs)
+      })))
 
 
 ; rotating for now, irl event set later
@@ -64,7 +88,7 @@
   (fn [cofx [_ [[x y] cell-value]]]
     (let [
           json js/JSON.stringify
-          move-event (json #js {:pos #js [x y] :cell_value cell-value})
+          move-event (json #js {:position #js [x y] :player "player1"})
           event-str (json #js {:event_type "move" :data move-event})
           ]
       {:send-event event-str}

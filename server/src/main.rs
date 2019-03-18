@@ -100,18 +100,34 @@ impl Actor for WsChatSession {
 }
 
 /// Handle messages from chat server, we simply send it to peer websocket
-impl Handler<server::ChatMessage> for WsChatSession {
+impl Handler<server::GameMessage> for WsChatSession {
     type Result = ();
 
-    fn handle(&mut self, msg: server::ChatMessage, ctx: &mut Self::Context) {
-        let f = serde_json::to_string(&msg);
-        match f {
-            Ok(json_string) => {
-                println!("doing a message {}", &json_string);
-                ctx.text(json_string);
-            }
-            Err(e) => {
-                println!("error of {} trying to deal with {:?}", e, &msg);
+    fn handle(&mut self, msg: server::GameMessage, ctx: &mut Self::Context) {
+        match msg {
+            server::GameMessage::Chat(chat) => {
+                let f = serde_json::to_string(&chat);
+                match f {
+                    Ok(json_string) => {
+                        println!("doing a message {}", &json_string);
+                        ctx.text(json_string);
+                    }
+                    Err(e) => {
+                        println!("error of {} trying to deal with {:?}", e, &chat);
+                    }
+                }
+            },
+            server::GameMessage::Turn(turn) => {
+                let f = serde_json::to_string(&turn);
+                match f {
+                    Ok(json_string) => {
+                        println!("doing a turn {}", &json_string);
+                        ctx.text(json_string);
+                    }
+                    Err(e) => {
+                        println!("error of {} trying to deal with {:?}", e, &turn);
+                    }
+                }
             }
         }
     }
@@ -223,6 +239,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                         println!("a chat");
                         ctx.state().addr.do_send(server::ClientMessage {
                             id: self.id,
+                            // TODO: remove .clone by moving this branch down into the ChatServer
+                            // handler
+                            event_type: general_message.event_type.clone(),
                             msg: general_message.data,
                             room: self.room.clone(),
                         });
@@ -231,6 +250,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                         println!("a game move");
                         ctx.state().addr.do_send(server::ClientMessage {
                             id: self.id,
+                            event_type: general_message.event_type.clone(),
                             msg: general_message.data,
                             room: self.room.clone(),
                         });
@@ -239,6 +259,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                         println!("whatt???? {} ", e_type);
                         ctx.state().addr.do_send(server::ClientMessage {
                             id: self.id,
+                            event_type: general_message.event_type.clone(),
                             msg: general_message.data,
                             room: self.room.clone(),
                         });

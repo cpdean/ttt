@@ -63,6 +63,8 @@
 
 
 (defn cell [value pos]
+  (js/console.log "the value")
+  (js/console.log value)
   (let [
         clicker (case value
                   1 #()
