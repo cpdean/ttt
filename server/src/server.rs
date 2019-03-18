@@ -185,6 +185,13 @@ fn advance_turn(player_id: usize, cm: GameTurnMessage, game_state: TicTacToeGame
                 }
             };
             gm.grid[y][x] = symbol;
+            // advance the 'current player' state
+            let next_player = match (gm.player1, gm.player2, gm.current_player_turn) {
+                (Some(one), Some(two), Some(current)) if current == two => Some(one),
+                (Some(one), Some(two), Some(current)) if current == one => Some(two),
+                (a, b, c) => panic!("how could it not match {:?},{:?},{:?}", a, b, c),
+            };
+            gm.current_player_turn = next_player;
             gm
         }
         Some(other_id) => {
@@ -196,17 +203,6 @@ fn advance_turn(player_id: usize, cm: GameTurnMessage, game_state: TicTacToeGame
             game_state.clone()
         }
     };
-    // advance the 'current player' state
-    let next_player = match (
-        new_game_state.player1,
-        new_game_state.player2,
-        new_game_state.current_player_turn,
-    ) {
-        (Some(one), Some(two), Some(current)) if current == two => Some(one),
-        (Some(one), Some(two), Some(current)) if current == one => Some(two),
-        (a, b, c) => panic!("how could it not match {:?},{:?},{:?}", a, b, c),
-    };
-    new_game_state.current_player_turn = next_player;
     new_game_state
 }
 
@@ -219,7 +215,7 @@ impl ChatServer {
             let next_turn_json = serde_json::to_string(&next_turn).unwrap();
             room.game_state = next_turn.clone();
             for id in &room.sessions_subscribed_to_room {
-                /*
+                /* // the skip id is... not good?
                 if *id != skip_id {
                     if let Some(addr) = self.sessions.get(&id) {
                         room.message_count += 1;
@@ -244,6 +240,7 @@ impl ChatServer {
     fn send_chat(&mut self, room_name: &str, message: &str, skip_id: usize) {
         if let Some(room) = self.rooms.get_mut(room_name) {
             for id in &room.sessions_subscribed_to_room {
+                /*
                 if *id != skip_id {
                     if let Some(addr) = self.sessions.get(&id) {
                         room.message_count += 1;
@@ -253,6 +250,15 @@ impl ChatServer {
                             message_count: room.message_count,
                         }));
                     }
+                }
+                */
+                if let Some(addr) = self.sessions.get(&id) {
+                    room.message_count += 1;
+                    let _ = addr.do_send(GameMessage::Chat(ChatMessage {
+                        event_type: "chat".to_owned(),
+                        content: message.to_owned(),
+                        message_count: room.message_count,
+                    }));
                 }
             }
         }

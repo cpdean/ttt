@@ -88,7 +88,10 @@
          [c01 c11 c21]
          [c02 c12 c22]] grid]
     [:div
-     #_[:pre (with-out-str (pprint grid))] 
+    #_[:pre
+      (with-out-str
+        (pprint
+          grid))] 
      [:table#gameboard
       [:tbody
        [:tr [cell c00 [0 0]] [cell c10 [1 0]] [cell c20 [2 0]]]
