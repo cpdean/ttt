@@ -71,24 +71,17 @@
     (let [
           db (:db cofx)
           [x y] pos
-          _ (js/console.log pos)
-          current (((:grid db) y) x)
-          rot-cell (case current
-                     0 1
-                     1 2
-                     2 0)
-          new-row (assoc ((:grid db) y) x rot-cell)
-          new-grid (assoc (:grid db) y new-row)]
-       {:db (assoc db :grid new-grid)
-        :dispatch [:send-move [pos rot-cell]]
+          ]
+       {
+        :dispatch [:send-move pos]
         })))
 
 (re-frame/reg-event-fx
   :send-move
-  (fn [cofx [_ [[x y] cell-value]]]
+  (fn [cofx [_ [x y]]]
     (let [
           json js/JSON.stringify
-          move-event (json #js {:position #js [x y] :player "player1"})
+          move-event (json #js {:position #js [x y]})
           event-str (json #js {:event_type "move" :data move-event})
           ]
       {:send-event event-str}

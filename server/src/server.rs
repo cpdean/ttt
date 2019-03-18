@@ -40,6 +40,16 @@ impl TicTacToeGame {
         } else if self.player2.is_none() {
             self.player2 = Some(id);
         }
+        // set someone to have a turn
+        match (self.player1, self.player2) {
+            (Some(a), Some(b)) => {
+                // TODO: set whichever player has fewer moves as currently going
+                self.current_player_turn = Some(a);
+            }
+            (_, _) => {
+                println!("one of the players was not set, nobody's turn first");
+            }
+        }
     }
 
     pub fn remove_player(&mut self, id: usize) {
@@ -157,19 +167,47 @@ impl Default for ChatServer {
 #[derive(Debug, Serialize, Deserialize, Message)]
 pub struct GameTurnMessage {
     position: Vec<usize>,
-    player: String,
 }
 
 // TODO: i'm clearly calling it below
 #[allow(dead_code)]
-fn advance_turn(cm: GameTurnMessage, game_state: TicTacToeGame) -> TicTacToeGame {
-    let mut gm = game_state;
-    let x = cm.position[0];
-    let y = cm.position[1];
-    println!("{}", cm.player);
-    let symbol = if cm.player == "player1" { 1 } else { 2 };
-    gm.grid[y][x] = symbol;
-    gm
+fn advance_turn(player_id: usize, cm: GameTurnMessage, game_state: TicTacToeGame) -> TicTacToeGame {
+    let mut new_game_state = match &game_state.current_player_turn {
+        Some(current) if current == &player_id => {
+            let mut gm = game_state.clone();
+            let x = cm.position[0];
+            let y = cm.position[1];
+            let symbol = match (game_state.player1, game_state.player2) {
+                (Some(a), Some(_)) if player_id == a => 1,
+                (Some(_), Some(b)) if player_id == b => 2,
+                (_, _) => {
+                    panic!("i dont even know");
+                }
+            };
+            gm.grid[y][x] = symbol;
+            gm
+        }
+        Some(other_id) => {
+            println!("not your turn, {}", player_id);
+            game_state.clone()
+        }
+        None => {
+            println!("this game has not even been initialized");
+            game_state.clone()
+        }
+    };
+    // advance the 'current player' state
+    let next_player = match (
+        new_game_state.player1,
+        new_game_state.player2,
+        new_game_state.current_player_turn,
+    ) {
+        (Some(one), Some(two), Some(current)) if current == two => Some(one),
+        (Some(one), Some(two), Some(current)) if current == one => Some(two),
+        (a, b, c) => panic!("how could it not match {:?},{:?},{:?}", a, b, c),
+    };
+    new_game_state.current_player_turn = next_player;
+    new_game_state
 }
 
 impl ChatServer {
@@ -177,10 +215,11 @@ impl ChatServer {
         println!("sending the turn now");
         if let Some(room) = self.rooms.get_mut(room_name) {
             let gameturn: GameTurnMessage = serde_json::from_str(&message).unwrap();
-            let next_turn = advance_turn(gameturn, room.game_state.clone());
+            let next_turn = advance_turn(skip_id, gameturn, room.game_state.clone());
             let next_turn_json = serde_json::to_string(&next_turn).unwrap();
             room.game_state = next_turn.clone();
             for id in &room.sessions_subscribed_to_room {
+                /*
                 if *id != skip_id {
                     if let Some(addr) = self.sessions.get(&id) {
                         room.message_count += 1;
@@ -189,6 +228,14 @@ impl ChatServer {
                             content: next_turn.clone(),
                         }));
                     }
+                }
+                */
+                if let Some(addr) = self.sessions.get(&id) {
+                    room.message_count += 1;
+                    let _ = addr.do_send(GameMessage::Turn(GameStateMessage {
+                        event_type: "board".to_owned(),
+                        content: next_turn.clone(),
+                    }));
                 }
             }
         }
