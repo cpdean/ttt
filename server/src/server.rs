@@ -203,7 +203,22 @@ fn advance_turn(player_id: usize, cm: GameTurnMessage, game_state: TicTacToeGame
             game_state.clone()
         }
     };
+    new_game_state.winner = get_winner(&new_game_state);
     new_game_state
+}
+
+/// returns the player who won, if someone won
+fn get_winner(game_state: &TicTacToeGame) -> Option<usize> {
+    // is there a row or col that is complete?
+    let width = game_state.grid.len();
+    let height = game_state.grid[0].len();
+    for x in 0..width {
+        for y in 0..height {
+            // uhh
+        }
+    }
+
+    None
 }
 
 impl ChatServer {
@@ -392,4 +407,80 @@ impl Handler<Join> for ChatServer {
             .sessions_subscribed_to_room
             .insert(id);
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn game(p1: usize, p2: usize, current: usize, grid: Vec<Vec<usize>>) -> TicTacToeGame {
+        let mut g = TicTacToeGame::new();
+        g.player1 = Some(p1);
+        g.player2 = Some(p2);
+        g.current_player_turn = Some(current);
+        g.grid = grid;
+        g
+    }
+
+    #[test]
+    fn test_advance_a_turn1() {
+        let g = game(1, 2, 1, vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]]);
+        let turn = advance_turn(
+            1,
+            GameTurnMessage {
+                position: vec![0, 0],
+            },
+            g,
+        );
+        let grid = turn.grid.clone();
+        let expected = vec![vec![1, 0, 0], vec![0, 0, 0], vec![0, 0, 0]];
+        assert_eq!(grid, expected);
+    }
+
+    #[test]
+    fn test_advance_a_turn2() {
+        let g = game(1, 2, 1, vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]]);
+        let turn = advance_turn(
+            1,
+            GameTurnMessage {
+                position: vec![1, 1],
+            },
+            g,
+        );
+        let grid = turn.grid.clone();
+        let expected = vec![vec![0, 0, 0], vec![0, 1, 0], vec![0, 0, 0]];
+        assert_eq!(grid, expected);
+    }
+
+    #[test]
+    fn test_advance_a_turn3() {
+        let g = game(1, 2, 1, vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 0, 0]]);
+        let turn = advance_turn(
+            1,
+            GameTurnMessage {
+                position: vec![1, 2],
+            },
+            g,
+        );
+        let grid = turn.grid.clone();
+        let expected = vec![vec![0, 0, 0], vec![0, 0, 0], vec![0, 1, 0]];
+        assert_eq!(grid, expected);
+    }
+
+    #[test]
+    fn win_top_row() {
+        let g = game(1, 2, 1, vec![vec![1, 1, 0], vec![2, 2, 0], vec![0, 0, 0]]);
+        let turn = advance_turn(
+            1,
+            GameTurnMessage {
+                position: vec![2, 0],
+            },
+            g,
+        );
+        let grid = turn.grid.clone();
+        let expected = vec![vec![1, 1, 1], vec![2, 2, 0], vec![0, 0, 0]];
+        assert_eq!(grid, expected);
+        assert_eq!(turn.winner, Some(1));
+    }
+
 }
