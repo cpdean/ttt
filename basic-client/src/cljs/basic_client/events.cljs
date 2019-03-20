@@ -45,9 +45,14 @@
     (let [
           content (.-content event-data)
           db (:db cofx)
+          new-db (-> db
+                     (assoc :grid (.-grid content))
+                     (assoc :current-player-turn (.-current_player_turn content))
+                     (assoc :winner (.-winner content))
+                     (assoc :client-player-id (.-player_id event-data)))
           ]
       (js/console.log content)
-      {:db (assoc db :grid (.-grid content))
+      {:db new-db 
       })))
 
 (re-frame/reg-event-fx

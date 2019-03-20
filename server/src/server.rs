@@ -78,6 +78,7 @@ pub struct ChatMessage {
 /// broadcasting game state
 #[derive(Debug, Serialize, Deserialize, Message)]
 pub struct GameStateMessage {
+    pub player_id: usize,
     pub event_type: String,
     pub content: TicTacToeGame,
 }
@@ -305,6 +306,7 @@ impl ChatServer {
                 if let Some(addr) = self.sessions.get(&id) {
                     room.message_count += 1;
                     let _ = addr.do_send(GameMessage::Turn(GameStateMessage {
+                        player_id: *id,
                         event_type: "board".to_owned(),
                         content: next_turn.clone(),
                     }));

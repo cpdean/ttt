@@ -9,4 +9,7 @@
    :grid [[0 0 0]
           [0 0 0]
           [0 0 0]]
+   :current-player-turn nil
+   :winner nil
+   :client-player-id nil
    })

@@ -13,6 +13,21 @@
    (:player-name db)))
 
 (re-frame/reg-sub
+ ::current-player-turn
+ (fn [db]
+   (:current-player-turn db)))
+
+(re-frame/reg-sub
+ ::winner
+ (fn [db]
+   (:winner db)))
+
+(re-frame/reg-sub
+ ::client-player-id
+ (fn [db]
+   (:client-player-id db)))
+
+(re-frame/reg-sub
   :is-connected
   (fn [db]
     (:is-connected db)))
