@@ -11,7 +11,7 @@ cargo run
 spin up the client
 
 ```
-# lein new re-frame tic-tac-toe-client
+cd basic-client
 lein do clean, figwheel
 ```
 
