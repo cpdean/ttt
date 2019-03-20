@@ -207,6 +207,30 @@ fn advance_turn(player_id: usize, cm: GameTurnMessage, game_state: TicTacToeGame
     new_game_state
 }
 
+/// if the 3 components of the triple match, return a Some of it, else None
+fn get_winner_of_triple(triple: Vec<usize>, game_state: &TicTacToeGame) -> Option<usize> {
+    let matching_triple = match triple.as_slice() {
+        [x, y, z] if x == y && y == z => Some(x.clone()),
+        _ => None,
+    };
+    if let Some(winner) = matching_triple {
+        if winner == 0 {
+            return None;
+        } else {
+            match winner {
+                1 => {
+                    return Some(game_state.player1.unwrap());
+                }
+                2 => {
+                    return Some(game_state.player2.unwrap());
+                }
+                err => unreachable!("there should only be symbols 0, 1, and 2. found {}", err),
+            }
+        }
+    }
+    None
+}
+
 /// returns the player who won, if someone won
 fn get_winner(game_state: &TicTacToeGame) -> Option<usize> {
     let width = game_state.grid.len();
@@ -215,25 +239,9 @@ fn get_winner(game_state: &TicTacToeGame) -> Option<usize> {
     for row in 0..width {
         let this_row = &game_state.grid[row];
         // they all have to be the same
-        let winning_row = match this_row.as_slice() {
-            [x, y, z] if x == y && y == z => Some(x.clone()),
-            _ => None,
-        };
-
-        if let Some(winner) = winning_row {
-            if winner == 0 {
-                continue; // to next row to check
-            } else {
-                match winner {
-                    1 => {
-                        return Some(game_state.player1.unwrap());
-                    }
-                    2 => {
-                        return Some(game_state.player2.unwrap());
-                    }
-                    err => unreachable!("there should only be symbols 0, 1, and 2. found {}", err),
-                }
-            }
+        let winner = get_winner_of_triple(this_row.to_vec(), game_state);
+        if winner.is_some() {
+            return winner;
         }
     }
 
@@ -243,77 +251,34 @@ fn get_winner(game_state: &TicTacToeGame) -> Option<usize> {
         for y in 0..height {
             this_col.push(game_state.grid[y][x]);
         }
-        let winning_col = match this_col.as_slice() {
-            [x, y, z] if x == y && y == z => Some(x.clone()),
-            _ => None,
-        };
-
-        if let Some(winner) = winning_col {
-            if winner == 0 {
-                continue; // to next row to check
-            } else {
-                match winner {
-                    1 => {
-                        return Some(game_state.player1.unwrap());
-                    }
-                    2 => {
-                        return Some(game_state.player2.unwrap());
-                    }
-                    err => unreachable!("there should only be symbols 0, 1, and 2. found {}", err),
-                }
-            }
+        let winner = get_winner_of_triple(this_col, game_state);
+        if winner.is_some() {
+            return winner;
         }
     }
 
     // check the diagonals
-    let nw_to_se = [
+    let nw_to_se = vec![
         game_state.grid[0][0],
         game_state.grid[1][1],
         game_state.grid[2][2],
     ];
 
-    let winning_diag = match nw_to_se {
-        [x, y, z] if x == y && y == z => Some(x.clone()),
-        _ => None,
-    };
-
-    if let Some(winner) = winning_diag {
-        if winner != 0 {
-            match winner {
-                1 => {
-                    return Some(game_state.player1.unwrap());
-                }
-                2 => {
-                    return Some(game_state.player2.unwrap());
-                }
-                err => unreachable!("there should only be symbols 0, 1, and 2. found {}", err),
-            }
-        }
+    let winner = get_winner_of_triple(nw_to_se, game_state);
+    if winner.is_some() {
+        return winner;
     }
 
-    let ne_to_sw = [
+    let ne_to_sw = vec![
         game_state.grid[2][0],
         game_state.grid[1][1],
         game_state.grid[0][2],
     ];
-    let winning_diag = match ne_to_sw {
-        [x, y, z] if x == y && y == z => Some(x.clone()),
-        _ => None,
-    };
-
-    if let Some(winner) = winning_diag {
-        if winner != 0 {
-            match winner {
-                1 => {
-                    return Some(game_state.player1.unwrap());
-                }
-                2 => {
-                    return Some(game_state.player2.unwrap());
-                }
-                err => unreachable!("there should only be symbols 0, 1, and 2. found {}", err),
-            }
-        }
+    let winner = get_winner_of_triple(ne_to_sw, game_state);
+    if winner.is_some() {
+        return winner;
     }
+
     None
 }
 
