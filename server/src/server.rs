@@ -243,6 +243,76 @@ fn get_winner(game_state: &TicTacToeGame) -> Option<usize> {
         for y in 0..height {
             this_col.push(game_state.grid[y][x]);
         }
+        let winning_col = match this_col.as_slice() {
+            [x, y, z] if x == y && y == z => Some(x.clone()),
+            _ => None,
+        };
+
+        if let Some(winner) = winning_col {
+            if winner == 0 {
+                continue; // to next row to check
+            } else {
+                match winner {
+                    1 => {
+                        return Some(game_state.player1.unwrap());
+                    }
+                    2 => {
+                        return Some(game_state.player2.unwrap());
+                    }
+                    err => unreachable!("there should only be symbols 0, 1, and 2. found {}", err),
+                }
+            }
+        }
+    }
+
+    // check the diagonals
+    let nw_to_se = [
+        game_state.grid[0][0],
+        game_state.grid[1][1],
+        game_state.grid[2][2],
+    ];
+
+    let winning_diag = match nw_to_se {
+        [x, y, z] if x == y && y == z => Some(x.clone()),
+        _ => None,
+    };
+
+    if let Some(winner) = winning_diag {
+        if winner != 0 {
+            match winner {
+                1 => {
+                    return Some(game_state.player1.unwrap());
+                }
+                2 => {
+                    return Some(game_state.player2.unwrap());
+                }
+                err => unreachable!("there should only be symbols 0, 1, and 2. found {}", err),
+            }
+        }
+    }
+
+    let ne_to_sw = [
+        game_state.grid[2][0],
+        game_state.grid[1][1],
+        game_state.grid[0][2],
+    ];
+    let winning_diag = match ne_to_sw {
+        [x, y, z] if x == y && y == z => Some(x.clone()),
+        _ => None,
+    };
+
+    if let Some(winner) = winning_diag {
+        if winner != 0 {
+            match winner {
+                1 => {
+                    return Some(game_state.player1.unwrap());
+                }
+                2 => {
+                    return Some(game_state.player2.unwrap());
+                }
+                err => unreachable!("there should only be symbols 0, 1, and 2. found {}", err),
+            }
+        }
     }
     None
 }
@@ -525,4 +595,67 @@ mod tests {
         assert_eq!(turn.winner, Some(1));
     }
 
+    #[test]
+    fn win_left_col() {
+        let g = game(1, 2, 1, vec![vec![1, 2, 0], vec![1, 2, 0], vec![0, 0, 0]]);
+        let turn = advance_turn(
+            1,
+            GameTurnMessage {
+                position: vec![0, 2],
+            },
+            g,
+        );
+        let grid = turn.grid.clone();
+        let expected = vec![vec![1, 2, 0], vec![1, 2, 0], vec![1, 0, 0]];
+        assert_eq!(grid, expected);
+        assert_eq!(turn.winner, Some(1));
+    }
+
+    #[test]
+    fn win_right_col() {
+        let g = game(1, 2, 1, vec![vec![0, 2, 1], vec![0, 2, 1], vec![0, 0, 0]]);
+        let turn = advance_turn(
+            1,
+            GameTurnMessage {
+                position: vec![2, 2],
+            },
+            g,
+        );
+        let grid = turn.grid.clone();
+        let expected = vec![vec![0, 2, 1], vec![0, 2, 1], vec![0, 0, 1]];
+        assert_eq!(grid, expected);
+        assert_eq!(turn.winner, Some(1));
+    }
+
+    #[test]
+    fn win_ne_sw_diag() {
+        let g = game(1, 2, 1, vec![vec![1, 2, 0], vec![0, 0, 2], vec![0, 0, 1]]);
+        let turn = advance_turn(
+            1,
+            GameTurnMessage {
+                position: vec![1, 1],
+            },
+            g,
+        );
+        let grid = turn.grid.clone();
+        let expected = vec![vec![1, 2, 0], vec![0, 1, 2], vec![0, 0, 1]];
+        assert_eq!(grid, expected);
+        assert_eq!(turn.winner, Some(1));
+    }
+
+    #[test]
+    fn win_nw_se_diag() {
+        let g = game(1, 2, 1, vec![vec![0, 2, 1], vec![0, 0, 2], vec![1, 0, 0]]);
+        let turn = advance_turn(
+            1,
+            GameTurnMessage {
+                position: vec![1, 1],
+            },
+            g,
+        );
+        let grid = turn.grid.clone();
+        let expected = vec![vec![0, 2, 1], vec![0, 1, 2], vec![1, 0, 0]];
+        assert_eq!(grid, expected);
+        assert_eq!(turn.winner, Some(1));
+    }
 }
