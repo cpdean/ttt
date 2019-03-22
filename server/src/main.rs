@@ -43,7 +43,6 @@ fn chat_route(req: &HttpRequest<WsChatSessionState>) -> Result<HttpResponse, Err
             id: 0,
             hb: Instant::now(),
             room: "Main".to_owned(),
-            name: None,
         },
     )
 }
@@ -56,8 +55,6 @@ struct WsChatSession {
     hb: Instant,
     /// joined room
     room: String,
-    /// peer name
-    name: Option<String>,
 }
 
 impl Actor for WsChatSession {
@@ -116,7 +113,7 @@ impl Handler<server::GameMessage> for WsChatSession {
                         println!("error of {} trying to deal with {:?}", e, &chat);
                     }
                 }
-            },
+            }
             server::GameMessage::Turn(turn) => {
                 let f = serde_json::to_string(&turn);
                 match f {
@@ -233,7 +230,15 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                 self.hb = Instant::now();
             }
             ws::Message::Text(text) => {
-                let general_message: server::JsonGeneralMessage = serde_json::from_str(&text).unwrap();
+                let general_message: server::JsonGeneralMessage = match serde_json::from_str(&text)
+                {
+                    Ok(gen_msg) => gen_msg,
+                    Err(e) => {
+                        eprintln!("bad json parsing: {:?}", e);
+                        ctx.text(format!("bad json parsing: {:?}", e));
+                        return;
+                    }
+                };
                 match general_message.event_type.as_ref() {
                     "chatmessage" => {
                         println!("a chat");
@@ -305,13 +310,13 @@ fn main() {
     let sys = actix::System::new("websocket-example");
 
     // Start chat server actor in separate thread
-    let server = Arbiter::start(|_| server::ChatServer::default());
+    let chat_server = Arbiter::start(|_| server::ChatServer::default());
 
     // Create Http server with websocket support
     HttpServer::new(move || {
         // Websocket sessions state
         let state = WsChatSessionState {
-            addr: server.clone(),
+            addr: chat_server.clone(),
         };
 
         App::with_state(state)
@@ -334,4 +339,62 @@ fn main() {
 
     println!("Started http server: 127.0.0.1:8080");
     let _ = sys.run();
+}
+
+/*
+cargo check
+cargo test
+*/
+
+#[cfg(test)]
+mod tests {
+    // how to test it
+    use actix::Arbiter;
+    use actix_web::*;
+    use futures::Stream;
+
+    #[test]
+    fn test_main() {
+        let sys = actix::System::new("websocket-example");
+        let chat_server = Arbiter::start(|_| super::server::ChatServer::default());
+        // Start chat server actor in separate thread
+        let mut srv = test::TestServer::build_with_state(move || {
+            // Websocket sessions state
+            super::WsChatSessionState {
+                addr: chat_server.clone(),
+            }
+        })
+        .start(|app| {
+            app.handler(|req| {
+                ws::start(
+                    req,
+                    super::WsChatSession {
+                        id: 0,
+                        hb: super::Instant::now(),
+                        room: "Main".to_owned(),
+                    },
+                )
+            })
+        });
+
+        let (reader, mut writer) = srv.ws().unwrap();
+        writer.text("{\"foo\": 111}");
+
+        /*
+        let (item, reader) = srv.execute(reader.into_future()) {
+            Ok((item, reader)) => {
+                core::mem::drop(sys);
+                core::mem::drop(srv);
+                1
+            }
+            Err(e) => {
+                core::mem::drop(sys);
+                core::mem::drop(srv);
+                1
+            }
+        };
+        */
+        let (item, reader) = srv.execute(reader.into_future()).unwrap();
+        assert_eq!(item, Some(ws::Message::Text("text".to_owned())));
+    }
 }
